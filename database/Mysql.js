@@ -45,7 +45,7 @@ module.exports = class Mysql extends Database {
         return mysql.createPool(config);
     }
 
-    async query(sql, params) {
+    private async query(sql, params) {
         try {
             return await new Promise((resolve, reject) => {
                 this.pool.getConnection(function (err, connection) {
@@ -85,11 +85,12 @@ module.exports = class Mysql extends Database {
         }));
         const query = 'UPDATE ' + model + ' SET ' + toSet.join(' AND ') + ' WHERE id = ?'
         console.log(query);
-        return await this.query(query, id)
+        return await this.query(query, id);
     }
 
     async update(model, filters = {}, options= {}) {
-
+        const retrieve = await this.findOne(model, filters, options);
+        return await this.updateById(model, retrieve.id, options);
     }
 
     async removeById(model, id, options = {}) {
@@ -98,15 +99,21 @@ module.exports = class Mysql extends Database {
     }
 
     async remove(model, filters = {}, options= {}) {
-
+        const retrieve = await this.findOne(model, filters, options);
+        return await this.removeById(model, retrieve.id, options);
     }
 
     async find(model, filters = {}, options = {}) {
-
+        const toSet = filters.concat(filters.map(([prop, val]) => {
+            return `${prop} = ${val}`
+        }));
+        const query = 'SELECT ' + (...options || '*') + ' FROM ' + model + toSet.join(' AND ');
+        return await this.query(query, [])
     }
 
     async findById(model, id, options = {}) {
-
+        const query = 'SELECT ' + (...options || '*') + ' FROM ' + model + ' WHERE id = ?';
+        return await this.query(query, id);
     }
 
     async findOne(model, filters = {}, options= {}) {
