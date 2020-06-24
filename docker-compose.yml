@@ -1,0 +1,44 @@
+version: "3.3"
+services:
+  whale:
+    image: docker/whalesay
+    command: ["cowsay", "Containers are deployed !"]
+
+  api:
+    restart: always
+    build:
+      context: ./
+      dockerfile: server.dockerfile
+    volumes:
+      - ./:/src/app
+      - /src/app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      WAIT_HOSTS: mongo:27017
+      NODE_ENV: development
+      BASE_MONGO: mongo
+
+  mongo:
+    image: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    depends_on:
+      - whale
+
+  mysql:
+    image: mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    depends_on:
+      - whale
+
+  pgsql:
+    image: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    depends_on:
+      - whale
