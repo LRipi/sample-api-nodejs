@@ -8,7 +8,7 @@ require('events').EventEmitter.defaultMaxListeners = 30;
 module.exports = class Mysql extends Database {
     constructor() {
         super();
-        this.pool = this.connect();
+        this.connection = await this.connect();
         if (process.env.DEBUG === 'true') {
             this.pool.on('acquire', function (connection) {
                 console.log("[\x1b[31mMYSQL_POOL\x1b[0m] Connection %d acquired", connection.threadId);
@@ -31,7 +31,7 @@ module.exports = class Mysql extends Database {
         }
     }
 
-    connect() {
+    async connect() {
         const config = {
             connectionLimit: 50,
             host: process.env.MYSQL_HOST,
@@ -42,31 +42,33 @@ module.exports = class Mysql extends Database {
             debug: false
         };
 
-        return mysql.createPool(config);
+        const pool = mysql.createPool(config);
+        return await new Promise((resolve, reject) => {
+            pool.getConnection(function (err, connection) {
+                if (err) {
+                    if (connection)
+                        connection.release();
+                    return reject({
+                        code: 100,
+                        message: 'Cannot connect to database'
+                    });
+                } else resolve(connection);
+            });
+        })
     }
 
     private async query(sql, params) {
         try {
             return await new Promise((resolve, reject) => {
-                this.pool.getConnection(function (err, connection) {
-                    if (err) {
-                        if (connection)
-                            connection.release();
-                        return reject({
-                            code: 100,
-                            message: 'Cannot connect to database'
-                        });
-                    }
-                    connection.query(sql, params, (err, res) => {
-                        connection.release();
-                        if (err)
-                            reject(err);
-                        else
-                            resolve(res);
-                    });
-                    connection.on('error', (err) => {
+                this.connection.query(sql, params, (err, res) => {
+                    connection.release();
+                    if (err)
                         reject(err);
-                    });
+                    else
+                        resolve(res);
+                });
+                this.connection.on('error', (err) => {
+                    reject(err);
                 });
             });
         } catch (e) {

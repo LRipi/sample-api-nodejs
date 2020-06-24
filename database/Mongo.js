@@ -10,12 +10,12 @@ class Mongo extends Database {
 
     connect() {
         const mongoOptions = {
-            uri: `mongodb://${process.env.MONGO_HOST}:27017/`,
+            uri: `mongodb://${process.env.MONGO_HOST}:${process.env.MONGO_ENV}/`,
             useNewUrlParser: true
         };
 
         mongoose.connect(mongoOptions.uri)
-            .then(() => console.log('Server is connected to mongoDB.'))
+            .then(() => process.env.DEBUG ? console.log('Server is connected to mongoDB.') : '')
             .catch((err) => throw err);
     }
 
